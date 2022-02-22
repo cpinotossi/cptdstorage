@@ -15,11 +15,6 @@ NOTE:
 prefix=cptdstorage
 myip=$(curl ifconfig.io)
 myobjectid=$(az ad user list --query '[?displayName==`ga`].objectId' -o tsv)
-az group create -n $prefix -l eastus
-az deployment group create -n $prefix -g $prefix --template-file bicep/deploy.bicep -p myobjectid=$myobjectid myip=$myip
-mkdir test
-echo 'Hello World' > test/test.txt
-az storage blob upload-batch --account-name $prefix --auth-mode login -d $prefix -s test
 ~~~
 
 ### Create Azure resources
@@ -27,9 +22,6 @@ az storage blob upload-batch --account-name $prefix --auth-mode login -d $prefix
 ~~~ text
 az group create -n $prefix -l eastus
 az deployment group create -n $prefix -g $prefix --template-file bicep/deploy.bicep -p myobjectid=$myobjectid myip=$myip
-mkdir test
-echo 'Hello World' > test/test.txt
-az storage blob upload-batch --account-name $prefix --auth-mode login -d $prefix -s test
 ~~~
 
 ### Upload content to blob storage
@@ -64,11 +56,16 @@ cat /mnt/test/test.txt
 
 Outcome should be "hello world".
 
-clean up
+## clean up
 
 ~~~ text
 az group delete -n $prefix -y
 ~~~
+
+## todo
+
+- Add nfs-common to cloud-init file
+
 
 # Misc
 
@@ -106,5 +103,8 @@ git remote add origin https://github.com/cpinotossi/cptdstorage.git
 git remote get-url --all origin
 git status
 git add *
-git push origin master
+git add .gitignore
+git commit -m"SMB via Azure blob storage account"
+git tag v1.0
+git push --atomic origin master v1.0
 

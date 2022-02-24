@@ -20,6 +20,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-08-01' = {
           delegations: []
           privateEndpointNetworkPolicies: 'Enabled'
           privateLinkServiceNetworkPolicies: 'Enabled'
+          networkSecurityGroup:{
+            id: nsg.id
+          }
           serviceEndpoints:[
             {
               service: 'Microsoft.Storage'
@@ -76,6 +79,32 @@ resource bastion 'Microsoft.Network/bastionHosts@2021-03-01' = {
           subnet: {
             id: '${vnet.id}/subnets/AzureBastionSubnet'
           }
+        }
+      }
+    ]
+  }
+}
+
+resource nsg 'Microsoft.Network/networkSecurityGroups@2020-11-01' = {
+  name: prefix
+  location: location
+  properties: {
+    securityRules: [
+      {
+        name: 'rdp'
+        properties: {
+          protocol: '*'
+          sourcePortRange: '*'
+          destinationPortRange: '3389'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+          access: 'Allow'
+          priority: 900
+          direction: 'Inbound'
+          sourcePortRanges: []
+          destinationPortRanges: []
+          sourceAddressPrefixes: []
+          destinationAddressPrefixes: []
         }
       }
     ]

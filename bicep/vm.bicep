@@ -48,7 +48,16 @@ resource sshkey 'Microsoft.Compute/sshPublicKeys@2021-07-01' = {
   }
 }
 
-resource vm 'Microsoft.Compute/virtualMachines@2019-07-01' = {
+var sshConfiguration = {
+          publicKeys: [
+            {
+              path:'/home/chpinoto/.ssh/authorized_keys'
+              keyData: sshkey.properties.publicKey
+            }
+          ]
+        }
+
+resource vm 'Microsoft.Compute/virtualMachines@2021-11-01' = {
   name: '${prefix}${postfix}'
   location: location
   identity: {
@@ -65,6 +74,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2019-07-01' = {
         managedDisk: {
           storageAccountType: 'Standard_LRS'
         }
+        deleteOption:'Delete'
       }
       imageReference: {
         publisher: 'Canonical'
@@ -79,7 +89,8 @@ resource vm 'Microsoft.Compute/virtualMachines@2019-07-01' = {
       adminPassword: password
       customData: loadFileAsBase64('vm.yaml')
       linuxConfiguration:{
-        ssh:{
+        disablePasswordAuthentication: false
+        ssh: {
           publicKeys: [
             {
               path:'/home/chpinoto/.ssh/authorized_keys'
@@ -93,6 +104,9 @@ resource vm 'Microsoft.Compute/virtualMachines@2019-07-01' = {
       networkInterfaces: [
         {
           id: nic.id
+          properties:{
+            deleteOption: 'Delete'
+          }
         }
       ]
     }

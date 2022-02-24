@@ -8,6 +8,9 @@ NOTE:
 - The subnet of the vnet will need to have service endpoint microsoft.storage turned on.
 - The storage account has to use LRZ or ZRS.
 - The storage account needs to have firewall turned on.
+- Storage Blob Index does not work.
+
+Please keept in mind, by turning on SMB support some of the Blob Storage feature will not work. See [here](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-feature-support-in-storage-accounts) for further details.
 
 ### Define env variables
 
@@ -20,6 +23,7 @@ myobjectid=$(az ad user list --query '[?displayName==`ga`].objectId' -o tsv)
 ### Create Azure resources
 
 ~~~ text
+az group delete -n $prefix -y
 az group create -n $prefix -l eastus
 az deployment group create -n $prefix -g $prefix --template-file bicep/deploy.bicep -p myobjectid=$myobjectid myip=$myip
 ~~~
@@ -32,7 +36,7 @@ az storage blob upload-batch --account-name $prefix --auth-mode login -d $prefix
 
 ### SSH into VM via azure bastion client
 
-> IMPORTANT:The following commands need to executed on powershell.
+> IMPORTANT: The following commands need to executed on powershell.
 
 ~~~ text
 $prefix="cptdstorage"
@@ -50,24 +54,47 @@ apt install nfs-common -y
 prefix=cptdstorage
 mkdir -p /mnt/test
 mount -o sec=sys,vers=3,nolock,proto=tcp ${prefix}.blob.core.windows.net:/${prefix}/${prefix}  /mnt/test
-ls /mnt/test
-cat /mnt/test/test.txt
+ls /mnt/test/
+chgrp -R chpinoto /mnt/test/
 ~~~
 
-Outcome should be "hello world".
+### xRDP into VM via azure bastion client
 
-## clean up
+Based on https://docs.microsoft.com/en-us/azure/virtual-machines/linux/use-remote-desktop?WT.mc_id=Portal-Microsoft_Azure_HybridNetworking
+
+> IMPORTANT:The following commands need to executed on powershell.
+
+~~~ text
+$prefix="cptdstorage"
+$vmid=az vm show -g $prefix -n ${prefix}lin --query id -o tsv
+az network bastion rdp -n ${prefix}bastion -g $prefix --target-resource-id $vmid
+~~~
+
+### clean up
 
 ~~~ text
 az group delete -n $prefix -y
 ~~~
 
+## Archive Demo
+
+TBD
+
+
 ## todo
 
-- Add nfs-common to cloud-init file
-
+- Demo https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-index-how-to?tabs=azure-portal
+- Use Bicep script resource to upload test file.
 
 # Misc
+
+## How to delete VM and all resources
+
+> NOTE: You will need to have setup the property "deleteOption: 'Delete'" inside the vm resource subresources nic and os-storage.
+
+~~~ text
+az vm delete -g $prefix -n ${prefix}lin -y
+~~~
 
 ## Show Storage Account firewall settings
 
@@ -93,6 +120,35 @@ az deployment operation group list -g $prefix -n create-vnet --query "[?properti
 
 You need to look it up in the corresponding Diagnostig Settings here:
 https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/resource-manager-diagnostic-settings#diagnostic-setting-for-azure-storage
+
+## Linux user rights assignment
+
+~~~ text
+root@cptdstoragelin:~# ls -la /mnt/test/
+total 4
+drwxr-x--- 2 root root    0 Feb 23 07:33 .
+drwxr-xr-x 4 root root 4096 Feb 23 07:32 ..
+~~~
+
+figure out your group
+
+~~~ text
+chpinoto@cptdstoragelin:~$ groups
+chpinoto adm dialout cdrom floppy sudo audio dip video plugdev lxd netdev
+~~~
+
+Add group chpinoto to folder /mnt/test/
+
+~~~ text
+chgrp -R chpinoto /mnt/test/
+~~~
+
+~~~ text
+root@cptdstoragelin:~# ls -la /mnt/test/
+total 4
+drwxr-x--- 2 root chpinoto    0 Feb 23 07:33 .
+drwxr-xr-x 4 root root     4096 Feb 23 07:32 ..
+~~~
 
 ## git tips
 

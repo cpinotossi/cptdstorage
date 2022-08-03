@@ -1,6 +1,6 @@
 # Storage Demo
 
-## Blob SMB demo
+## Blob NFS demo
 
 Based on [MS Docs NFS on Blob](https://docs.microsoft.com/en-us/azure/storage/blobs/network-file-system-protocol-support-how-to)
 
@@ -10,11 +10,11 @@ NOTE:
 - The storage account needs to have firewall turned on.
 - Storage Blob Index does not work.
 
-Please keept in mind, by turning on SMB support some of the Blob Storage feature will not work. See [here](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-feature-support-in-storage-accounts) for further details.
+Please keept in mind, by turning on NFS support some of the Blob Storage feature will not work. See [here](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-feature-support-in-storage-accounts) for further details.
 
 ### Define env variables
 
-~~~ text
+~~~ bash
 prefix=cptdstorage
 myip=$(curl ifconfig.io)
 myobjectid=$(az ad user list --query '[?displayName==`ga`].objectId' -o tsv)
@@ -22,7 +22,7 @@ myobjectid=$(az ad user list --query '[?displayName==`ga`].objectId' -o tsv)
 
 ### Create Azure resources
 
-~~~ text
+~~~ bash
 az group delete -n $prefix -y
 az group create -n $prefix -l eastus
 az deployment group create -n $prefix -g $prefix --template-file bicep/deploy.bicep -p myobjectid=$myobjectid myip=$myip
@@ -30,7 +30,7 @@ az deployment group create -n $prefix -g $prefix --template-file bicep/deploy.bi
 
 ### Upload content to blob storage
 
-~~~ text
+~~~ bash
 az storage blob upload-batch --account-name $prefix --auth-mode login -d $prefix -s test
 ~~~
 
@@ -38,7 +38,7 @@ az storage blob upload-batch --account-name $prefix --auth-mode login -d $prefix
 
 > IMPORTANT: The following commands need to executed on powershell.
 
-~~~ text
+~~~ bash
 $prefix="cptdstorage"
 $vmid=az vm show -g $prefix -n ${prefix}lin --query id -o tsv
 az network bastion ssh -n ${prefix}bastion -g $prefix --target-resource-id $vmid --auth-type "AAD"
@@ -48,7 +48,7 @@ az network bastion ssh -n ${prefix}bastion -g $prefix --target-resource-id $vmid
 
 Inside the vm execute the following commands.
 
-~~~ text
+~~~ bash
 sudo -i
 apt install nfs-common -y
 prefix=cptdstorage
@@ -64,7 +64,7 @@ Based on https://docs.microsoft.com/en-us/azure/virtual-machines/linux/use-remot
 
 > IMPORTANT:The following commands need to executed on powershell.
 
-~~~ text
+~~~ bash
 $prefix="cptdstorage"
 $vmid=az vm show -g $prefix -n ${prefix}lin --query id -o tsv
 az network bastion rdp -n ${prefix}bastion -g $prefix --target-resource-id $vmid
@@ -92,13 +92,13 @@ TBD
 
 > NOTE: You will need to have setup the property "deleteOption: 'Delete'" inside the vm resource subresources nic and os-storage.
 
-~~~ text
+~~~ bash
 az vm delete -g $prefix -n ${prefix}lin -y
 ~~~
 
 ## Show Storage Account firewall settings
 
-~~~ text
+~~~ bash
 az storage account show -n $prefix -g $prefix --query networkRuleSet
 ~~~
 
@@ -106,13 +106,13 @@ az storage account show -n $prefix -g $prefix --query networkRuleSet
 
 You can list them via cli.
 
-~~~ text
+~~~ bash
 az resource list -g $prefix -o table
 ~~~
 
 ## How to find the deployment error message?
 
-~~~ text
+~~~ bash
 az deployment operation group list -g $prefix -n create-vnet --query "[?properties.provisioningState=='Failed'].properties.statusMessage.error"
 ~~~
 
@@ -123,8 +123,12 @@ https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/resource-manager
 
 ## Linux user rights assignment
 
+~~~ bash
+ls -la /mnt/test/
+~~~
+
+Output: 
 ~~~ text
-root@cptdstoragelin:~# ls -la /mnt/test/
 total 4
 drwxr-x--- 2 root root    0 Feb 23 07:33 .
 drwxr-xr-x 4 root root 4096 Feb 23 07:32 ..
@@ -132,18 +136,17 @@ drwxr-xr-x 4 root root 4096 Feb 23 07:32 ..
 
 figure out your group
 
-~~~ text
-chpinoto@cptdstoragelin:~$ groups
-chpinoto adm dialout cdrom floppy sudo audio dip video plugdev lxd netdev
+~~~ bash
+groups
 ~~~
 
 Add group chpinoto to folder /mnt/test/
 
-~~~ text
+~~~ bash
 chgrp -R chpinoto /mnt/test/
 ~~~
 
-~~~ text
+~~~ bash
 root@cptdstoragelin:~# ls -la /mnt/test/
 total 4
 drwxr-x--- 2 root chpinoto    0 Feb 23 07:33 .
@@ -152,7 +155,7 @@ drwxr-xr-x 4 root root     4096 Feb 23 07:32 ..
 
 ## git tips
 
-~~~ text
+~~~ bash
 git init -m master
 gh repo create cptdstorage --public
 git remote add origin https://github.com/cpinotossi/cptdstorage.git
@@ -163,4 +166,5 @@ git add .gitignore
 git commit -m"SMB via Azure blob storage account"
 git tag v1.0
 git push --atomic origin master v1.0
+~~~
 
